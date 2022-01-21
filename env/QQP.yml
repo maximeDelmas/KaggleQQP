@@ -10,3 +10,4 @@ dependencies:
   - torch
   - transformers
   - plotly
+  - sklearn
