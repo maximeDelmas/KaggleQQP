@@ -8,3 +8,4 @@ app/test.py
 logs/**
 sbatch/**
 app/build_Siamese.py
+app/benchmark/**
