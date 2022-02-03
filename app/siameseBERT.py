@@ -353,8 +353,8 @@ def pwdistSiameseBERT(model, test, device, out_dir):
         pwdist_list += pwdist.tolist()
         y_list += y.tolist()
 
-        df_pred = pd.DataFrame({'pwdist': pwdist_list, 'y': y_list})
-        df_pred.to_csv(os.path.join(out_dir, "best_model_predictions.csv"), index = False)
+    df_pred = pd.DataFrame({'pwdist': pwdist_list, 'y': y_list})
+    df_pred.to_csv(os.path.join(out_dir, "best_model_predictions.csv"), index = False)
 
 
 

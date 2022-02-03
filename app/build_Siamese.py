@@ -17,7 +17,6 @@ else:
     print('No GPU available, using the CPU instead.')
     device = torch.device("cpu")
 
-# device = torch.device("cpu")
 print(device)
 
 if False:
@@ -53,9 +52,6 @@ if False:
 
 # tokeniser
 tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-
-# CV = train.sample(frac = 1).reset_index(drop = True).head(n = 100)
-# CV.to_csv("data/SiameseBERT/CV/cv_data.csv", index = False)
 
 CV = pd.read_csv("data/SiameseBERT/CV/cv_data.csv", index_col = False)
 

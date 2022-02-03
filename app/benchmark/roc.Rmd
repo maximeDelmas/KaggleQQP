@@ -1,0 +1,32 @@
+---
+title: "benchmark_ROC"
+author: "Delmas Maxime"
+date: "03/02/2022"
+output: html_document
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(pROC)
+```
+
+
+```{r}
+path <- "data/SiameseBERT"
+list_dir <- c("batch128_m5_th1")
+K <- 5
+for(k in 1:K){
+  
+  data <- data.frame()
+  
+  for(dir in list_dir){
+    
+    DPATH <- paste0( c(path, dir, paste0("f", k), "best_model_predictions.csv"), collapse = '/' )
+    
+    D <- read.table(DPATH, header = T, sep = ',')
+    roc <- roc_cdf <- roc(predictor = D$pwdist, response = D$y, levels = c('0', '1'), direction = '>')
+    print(auc(roc))
+  }
+
+}
+
+```
