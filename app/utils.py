@@ -2,7 +2,8 @@ import random
 import numpy as np
 import torch
 from transformers.file_utils import is_torch_available
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
+from torch.optim import AdamW
 
 def fix_dataset(dataset):
     """Fix dataset issues. Some rows don't have 2 questions for instance.
