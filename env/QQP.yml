@@ -11,3 +11,4 @@ dependencies:
   - transformers
   - plotly
   - sklearn
+  - pylint==2.4.4
