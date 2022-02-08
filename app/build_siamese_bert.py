@@ -29,7 +29,7 @@ if not os.path.isdir(OUT_DIR):
     os.makedirs(OUT_DIR)
 
 TOKENIZER = BertTokenizer.from_pretrained('bert-base-uncased')
-BATCH_SIZE = 12
+BATCH_SIZE = 128
 NEPOCHS = 10
 MODEL_PARAMS = dict({'freeze_embedding': True, 'freeze_encoder_layer': 8, 'freeze_cls_pooler': True})
 LOSS = ContrastiveLoss(m=10)
@@ -37,7 +37,7 @@ LOSS = ContrastiveLoss(m=10)
 
 # Load data
 CV = pd.read_csv("data/SiameseBERT/CV/cv_data_100000.csv", index_col=False)
-DATASET = SiameseNetWorkSentenceDataset(data=CV.head(n = 100), tokenizer=TOKENIZER, max_length=64)
+DATASET = SiameseNetWorkSentenceDataset(data=CV, tokenizer=TOKENIZER, max_length=64)
 
 # CV split
 
