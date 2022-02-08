@@ -29,7 +29,7 @@ if not os.path.isdir(OUT_DIR):
     os.makedirs(OUT_DIR)
 
 TOKENIZER = BertTokenizer.from_pretrained('bert-base-uncased')
-BATCH_SIZE = 10
+BATCH_SIZE = 128
 NEPOCHS = 10
 MODEL_PARAMS = dict({'freeze_embedding': True, 'freeze_encoder_layer': 8, 'freeze_cls_pooler': True})
 LOSS = ContrastiveLoss(m=10)
@@ -37,14 +37,12 @@ LOSS = ContrastiveLoss(m=10)
 
 # Load data
 CV = pd.read_csv("data/SiameseBERT/CV/cv_data_100000.csv", index_col=False)
-DATASET = SiameseNetWorkSentenceDataset(data=CV.head(n=100), tokenizer=TOKENIZER, max_length=64)
+DATASET = SiameseNetWorkSentenceDataset(data=CV, tokenizer=TOKENIZER, max_length=64)
 
 # CV split
 
 KFOLD = KFold(n_splits=5, shuffle=True, random_state=1)
 TRAIN_IDS, VAL_IDS = next(iter(KFOLD.split(DATASET)))
-print(TRAIN_IDS)
-print(VAL_IDS)
 TRAIN_LOADER = DataLoader(DATASET, BATCH_SIZE, sampler=SubsetRandomSampler(TRAIN_IDS))
 VAL_LOADER = DataLoader(DATASET, BATCH_SIZE, sampler=SubsetRandomSampler(VAL_IDS))
 
