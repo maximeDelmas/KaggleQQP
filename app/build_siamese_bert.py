@@ -36,7 +36,7 @@ LOSS = ContrastiveLoss(m=10)
 
 
 # Load data
-CV = pd.read_csv("data/SiameseBERT/CV/cv_data_100000.csv", index_col=False)
+CV = pd.read_csv("data/CV/cv_data_100000.csv", index_col=False)
 DATASET = SiameseNetWorkSentenceDataset(data=CV, tokenizer=TOKENIZER, max_length=64)
 
 # CV split
