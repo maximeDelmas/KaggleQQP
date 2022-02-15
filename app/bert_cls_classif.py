@@ -131,9 +131,10 @@ def evalute_BERTSentencesClassification(validation_loader, model, loss_fn, thres
 
         # Apply model
         out = model(v_input_ids, v_token_type_ids, v_attention_mask)
+        out = out.squeeze()
 
         # Compute Loss
-        loss = loss_fn(out.squeeze(), v_y)
+        loss = loss_fn(out, v_y)
         v_loss.append(loss.item())
 
         # Compute prediction at m
@@ -181,7 +182,9 @@ def bert_sentences_classification_prediction(model, validation_loader, device, o
 
         # Apply model
         out = model(input_ids, token_type_ids, attention_mask)
-        pred_list += out.squeeze().tolist()
+        out = out.squeeze()
+
+        pred_list += out.tolist()
         y_list += y.tolist()
 
     df_pred = pd.DataFrame({'p': pred_list, 'y': y_list})
@@ -245,9 +248,10 @@ def train_loop_bert_sentences_classification(model, dataloader, validation, opti
 
             # Apply model
             out = model(input_ids, token_type_ids, attention_mask)
+            out = out.squeeze()
 
             # Compute Constrastive loss
-            loss = loss_fn(out.squeeze(), y)
+            loss = loss_fn(out, y)
 
             # Update batch loss and total loss
             total_loss += loss.item()
