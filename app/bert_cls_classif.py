@@ -341,7 +341,7 @@ def cross_validation_bert_sentences_classification(model_params, dataset, k, los
     In each fold we applied the train_loop_bert_sentences_classification. and export the training_logs dataframe in the output directory
 
     Args:
-        model_params (dict): a python dict containing the parameters to initialize a SiameseBERTNet model.
+        model_params (dict): a python dict containing the parameters to initialize a BERTSentencesClassification model.
         dataset (torch.utils.data.Dataset): the training dataset that will be used for CV
         k (int): the number of fold
         loss_fn (ContrastiveLoss): the initialized constrastive loss function
