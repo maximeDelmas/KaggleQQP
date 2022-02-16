@@ -16,11 +16,24 @@ from utils import init_model
 
 class SiameseNetWorkSentenceDataset(Dataset):
     """
-    SiameseNetWorkSentenceDataset create a Dataset
+    SiameseNetWorkSentenceDataset create a Dataset from a pd.Dataframe
+    
+    Args:
     - data (pd.DataFrame): the data dataframe with column 'question1' and 'question2' along with the label 'is_duplicate'
     - tokenizer: the BERT tokenizer, such as: BertTokenizer.from_pretrained('bert-base-uncased')
     - max_length: the maximal length of tokens input vector (default 64) Shorter vector arre padded to max_length with [PAD token] (id: 0) and longer are truncated.
     The size includes the start [CLS] and end [SEP] tokens.
+
+    Returns the created Dataset.
+
+    Using the Dataset in a Dataloader:
+        dataloader = DataLoader(Dataset, batch_size=N, shuffle=True/False)
+        When iterating over the Dataset using a dataloader, specifying the batch size at N, each returned batch is a list of 3 elements:
+        - Dataset[0]: dict of input_ids, token_type_ids and attention_mask tensors of size (N x S) for questions 1 in the batch
+        - Dataset[1]: dict of input_ids, token_type_ids and attention_mask tensors of size (N x S) for questions 2 in the batch
+        - Dataset[2]: tensor corresponding to the label of the questions pairs.
+
+        S is the sequence length.
     """
 
     def __init__(self, data, tokenizer, max_length):
@@ -62,6 +75,11 @@ class SiameseBERTNet(nn.Module):
 
     The SiameBERTNet class is a siamese network where the two sentences are first independently sent to a BERT model.
     The embedding of the sentence is created from the average mean of the token embedding outputed by BERT, [CLS] and [SEP] tokens can be excluded.
+    Inputs:
+        - input_ids_1: tensor (NxS) of the tokens corresponding ids in WordPiece vocabulary for sentence 1. N is the batch size and S the sequence length (default to 64)
+        - attention_mask_1: tensor (NxS) tensor corresponing to the attention mask for sentence 1. Tokens can attent to all other tokens of the sentence 1.
+        - input_ids_2: tensor (NxS) of the tokens corresponding ids in WordPiece vocabulary for sentence 2. N is the batch size and S the sequence length (default to 64)
+        - attention_mask_2: tensor (NxS) tensor corresponing to the attention mask for sentence 2. Tokens can attent to all other tokens of the sentence 2.
 
     Args:
         no_cls_pooling (bool): incluse [CLS] token is the sentence averaged embedding ?
@@ -71,7 +89,7 @@ class SiameseBERTNet(nn.Module):
         freeze_cls_pooler (bool): freeze the BERT cls pooler layer ?
     """
 
-    def __init__(self, no_cls_pooling=True, no_sep_pooling=True, freeze_embedding=False, freeze_encoder_layer=False, freeze_cls_pooler=False):
+    def __init__(self, no_cls_pooling=True, no_sep_pooling=True, freeze_embedding=0, freeze_encoder_layer=False, freeze_cls_pooler=False):
         super(SiameseBERTNet, self).__init__()
 
         self.bert = BertModel.from_pretrained('bert-base-uncased')
@@ -82,10 +100,9 @@ class SiameseBERTNet(nn.Module):
         if freeze_embedding:
             self.bert.embeddings.requires_grad_(False)
 
-        if freeze_encoder_layer:
-            # Set the requires_grad attribute of parameters of the first 'freeze_encoder_layer' layers to False. By default there is 12 layers
-            for layer in self.bert.encoder.layer[:freeze_encoder_layer]:
-                layer.requires_grad_(False)
+        # Set the requires_grad attribute of parameters of the first 'freeze_encoder_layer' layers to False. By default there is 12 layers
+        for layer in self.bert.encoder.layer[: freeze_encoder_layer]:
+            layer.requires_grad_(False)
 
         if freeze_cls_pooler:
             self.bert.pooler.requires_grad_(False)
@@ -241,7 +258,7 @@ def evalute_siamese(validation_loader, model, loss_fn, threshold, device):
 
 
 def pwdist_siamese_bert(model, test, device, out_dir):
-    """Copute pairwise distances between question pairs in a test or validation set using the model.
+    """Compute pairwise distances between question pairs in a test or validation set using the model.
 
     Args:
         model (SiameseBERTNet): the trained model

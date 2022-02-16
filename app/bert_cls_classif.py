@@ -19,11 +19,20 @@ class BERTSentencesClassificationDataset(Dataset):
     """Dataset creater for BERTSentencesClassification
 
     Args:
-    SiameseNetWorkSentenceDataset create a Dataset
     - data (pd.DataFrame): the data dataframe with column 'question1' and 'question2' along with the label 'is_duplicate'
     - tokenizer: the BERT tokenizer, such as: BertTokenizer.from_pretrained('bert-base-uncased')
-    - max_length: the maximal length of tokens input vector (default 64) Shorter vector arre padded to max_length with [PAD token] (id: 0) and longer are truncated.
+    - max_length: the maximal length of tokens input vector (default 64) Shorter vector are padded to max_length with [PAD token] (id: 0) and longer are truncated. Be aware, overflowing tokens are not returned for this setting, i.e. sequence pairs with the 'longest_first' truncation strategy. 
     The size includes the start [CLS] and end [SEP] tokens.
+
+    Returns the created Dataset.
+
+    Using the Dataset in a Dataloader:
+        dataloader = DataLoader(Dataset, batch_size=N, shuffle=True/False)
+        When iterating over the Dataset using a dataloader, specifying the batch size at N, each returned batch is a list of 3 elements:
+        - Dataset[1]: dict of input_ids, token_type_ids and attention_mask tensors of size (N x S) for the concatenated pair of questions 1 and 2 in the batch
+        - Dataset[2]: tensor corresponding to the label of the questions pairs.
+
+    S is the sequence length.
     """
 
     def __init__(self, data, tokenizer, max_length):
@@ -60,7 +69,18 @@ class BERTSentencesClassificationDataset(Dataset):
 
 
 class BERTSentencesClassification(nn.Module):
-    """BERTSentencesClassification model
+    """The BERTSentencesClassification model.
+    Use a pre-trained BERT model and add a classification (linear -> Sigmoid) layer for predictions.
+    Pairs of questions are concatenated with a [SEP] token as for the Next Sentence Prediction task of the original model.
+    Input of the models are :
+        - input_ids: tensor (NxS) of the tokens corresponding ids in WordPiece vocabulary. N is the batch size and S the sequence length (default to 64)
+        - token_type_ids: tensor (NxS) to distinguish sentences from the first and second sentences in initial embedding. N is the batch size and S the sequence length (default to 64)
+        - attention_mask: tensor (NxS) tensor corresponing to the attention mask. Tokens can attent to all other tokens regardless of the sentence (s1 or s2) to which they belong.
+    
+    Args:
+        freeze_embedding (bool): freeze BERT's embedding layer ?
+        freeze_encoder_layer (int): freeze the BERT first n encoder ? 0 if not.
+        freeze_cls_pooler (bool): freeze the BERT cls pooler layer ?
     """
 
     def __init__(self, freeze_embedding=False, freeze_encoder_layer=0, freeze_cls_pooler=False):
@@ -87,7 +107,8 @@ class BERTSentencesClassification(nn.Module):
         )
 
     def forward(self, input_ids, token_type_ids, attention_mask):
-        """forwars function
+        """forwars function.
+        Extract the [CLS] token vector from the BERT output and sent it to the classification layer.
         """
 
         # Get input_ids, token_type_ids (as we have sentense pairs) and attention mask
@@ -98,13 +119,13 @@ class BERTSentencesClassification(nn.Module):
         return classification
 
 def evalute_BERTSentencesClassification(validation_loader, model, loss_fn, threshold, device):
-    """Evaluate the performance of the SiameseBERTNet model on the validation dataset.
-    This function is specific to the SiameseBERTNet class.
+    """Evaluate the performance of the BERTSentencesClassification model on the validation dataset.
+    This function is specific to the BERTSentencesClassification class.
 
     Args:
         validation_loader (torch.utils.data.dataloader.DataLoader): the validation dataloader
-        model (SiameseBERTNet): the SiameseBERT model to eval
-        loss_fn (ContrastiveLoss): the initialized constrastive loss function
+        model (BERTSentencesClassification): the SiameseBERT model to eval
+        loss_fn (BCELoss): the initialized Binary Cross Entropy loss function
         threshold (int): the threshold on the distance between 2 sentences. If D < th: duplicated (1), else non_duplicated (0)
         device (torch.device): the device used by torch cpu or gpu.
 
@@ -163,6 +184,14 @@ def evalute_BERTSentencesClassification(validation_loader, model, loss_fn, thres
 
 
 def bert_sentences_classification_prediction(model, validation_loader, device, out_dir):
+    """Compute probability of duplication for question pairs using a BERTSentencesClassification model.
+
+    Args:
+        model (BERTSentencesClassification): the trained model
+        test (torch.utils.data.dataloader.DataLoader): the test / validation dataloader
+        device (torch.device): the device used by torch cpu or gpu.
+        out_dir (str): the output directory
+    """
 
     # Put model in test mode
     model.eval()
@@ -194,7 +223,31 @@ def bert_sentences_classification_prediction(model, validation_loader, device, o
 
 
 def train_loop_bert_sentences_classification(model, dataloader, validation, optimizer, scheduler, loss_fn, eval_threshold, nepochs, device, out_dir, save):
-    """The training loop for the BERTSentencesClassification model.
+    """The training loop for the BERTSentencesClassification model. The function exports training logs to evaluate the model performances and overfitting during training.
+    The model is trained by minimizing the loss obtained with loss_fn.
+    If a validation dataloader is provided the model is evaluate on it using evalute_BERTSentencesClassification with 'loss_fn' and 'eval_threshold'. The evaluation is done every 'step' batch in each epoch and also at the end of each epoch. The results are saved in the returned training_logs dataframe.
+    The function also saves in the output directory the parameters of the best model obtained during training, based on the minimal evaluation loss that have been obtained (best-model.pt).
+    The best model can then be load using:
+    model = BERTSentencesClassification(**params)
+    model.load_state_dict(torch.load("path/to/best-model.pt"))
+    If no validation dataloader is provided (None) only the average training loss is reported and the parameters obtained at the end of training will be exported (not necessarily the best)
+    This model can be load using the same method as described above.
+
+    Args:
+        model (BERTSentencesClassification): the BERTSentencesClassification model to train
+        dataloader (torch.utils.data.dataloader.DataLoader): the training dataLoader
+        validation (torch.utils.data.dataloader.DataLoader): the validation dataloader
+        optimizer (torch.optim.AdamW): the parametrized optimizer from init_model
+        scheduler (torch.optim.lr_scheduler.LambdaLR): the parametrized scheduler from init_model
+        loss_fn (BCELoss): the initialized Binary Cross Entropy loss function
+        eval_threshold (int): the threshold to use for evaluation
+        nepochs (int]): the number of training epochs (must be same as in the scheduler)
+        device (torch.device): the device used by torch cpu or gpu.
+        out_dir (str): the output directory
+        save (bool): save the best (or last if no validation) model during training ?
+
+    Returns:
+        [pd.DataFrame]: the training_logs dataframe. Reports the average training loss, evaluation loss, F1-score and accuracy computed on the state of the trained model every 'step' batchs in each epoch and also at the end of each epoch.
     """
 
     # Init errors, F1-score and accuracy vector to store for all epochs
@@ -344,7 +397,7 @@ def cross_validation_bert_sentences_classification(model_params, dataset, k, los
         model_params (dict): a python dict containing the parameters to initialize a BERTSentencesClassification model.
         dataset (torch.utils.data.Dataset): the training dataset that will be used for CV
         k (int): the number of fold
-        loss_fn (ContrastiveLoss): the initialized constrastive loss function
+        loss_fn (BCELoss): the initialized Binary Cross Entropy loss function
         eval_threshold (int): the threshold to use for evaluation
         device (torch.device): the torch device cpu or gpu
         out_dir (str): the output directory
