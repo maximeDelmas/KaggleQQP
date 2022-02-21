@@ -12,3 +12,4 @@ dependencies:
   - plotly
   - sklearn
   - pylint==2.4.4
+  - nltk

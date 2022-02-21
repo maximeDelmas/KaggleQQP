@@ -40,7 +40,7 @@ LOSS = BCELoss()
 
 # Load data
 CV = pd.read_csv("data/CV/cv_data_100000.csv", index_col=False)
-DATASET = BERTSentencesClassificationDataset(data=CV.head(n=1000), tokenizer=TOKENIZER, max_length=64)
+DATASET = BERTSentencesClassificationDataset(data=CV, tokenizer=TOKENIZER, max_length=64)
 
 # CV split
 KFOLD = KFold(n_splits=5, shuffle=True, random_state=1)
